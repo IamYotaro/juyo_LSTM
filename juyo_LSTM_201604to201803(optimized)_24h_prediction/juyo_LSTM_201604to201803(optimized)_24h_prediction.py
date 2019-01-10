@@ -6,8 +6,9 @@ import os
 
 #%%
 PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_201604to201803(optimized)_24h_prediction'
+DATA_PATH = 'E:\AnacondaProjects\juyo_LSTM\juyo_LSTM_data'
 os.chdir(PATH)
-all_data = pd.read_csv('all_data.csv')
+all_data = pd.read_csv(os.path.join(DATA_PATH, 'all_data.csv'))
 all_data.set_index('datetime', inplace=True)
 all_data.drop(['Kosuiryo(mm)',
                'Nisha(MJ/m2)',

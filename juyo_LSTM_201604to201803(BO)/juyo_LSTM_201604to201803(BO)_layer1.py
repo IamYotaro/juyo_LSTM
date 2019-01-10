@@ -1,23 +1,16 @@
 import pandas as pd
 import numpy as np
+import os
 
 #%%
-juyo_info = pd.read_pickle('juyo_info.pkl')
-tem_info = pd.read_pickle('tem_info.pkl')
-re_im_info = pd.read_pickle('re_im_info.pkl')
-re_spot_info = pd.read_pickle('re_spot_info.pkl')
-
-#%%
-# concat all data
-
-all_data = pd.concat([juyo_info, tem_info, re_im_info, re_spot_info], axis=1, join_axes=[juyo_info.index])
-all_data = all_data.set_index([all_data.index,
-                               all_data.index.year, 
-                               all_data.index.month, 
-                               all_data.index.weekday, 
-                               all_data.index.day, 
-                               all_data.index.hour])
-all_data.index.names = ['datetime','year', 'month', 'weekday','day', 'hour']
+PATH = 'E:\AnacondaProjects\juyo_LSTM\juyo_LSTM_201604to201803(BO)'
+DATA_PATH = 'E:\AnacondaProjects\juyo_LSTM\juyo_LSTM_data'
+os.chdir(PATH)
+all_data = pd.read_csv(os.path.join(DATA_PATH, 'all_data.csv'))
+all_data.set_index('datetime', inplace=True)
+all_data.drop(['Kosuiryo(mm)',
+               'Nisha(MJ/m2)',
+               'Sitsudo(%)'], axis=1, inplace=True)
 
 #%%
 # z-score normalization function
@@ -32,32 +25,33 @@ def zscore(training_data, data):
 # Make LSTM inputs data function
     
 time_length = 24
+n_pred = 1
+target_column = 'Consumption'
 
 def make_dataset(data):
     
     inputs_data = []
     
-    for i in range(len(data)-time_length):
+    for i in range(len(data)-time_length-n_pred+1):
         temp_set = data[i:(i+time_length)].copy()
         inputs_data.append(temp_set)
-    inputs_target = data['Consumption'][time_length:]
+    
+    inputs_target = np.zeros(shape=(len(data)-time_length-n_pred+1, n_pred))
+    for i in range(len(data)-time_length-n_pred+1):
+        for j in range(n_pred):
+            inputs_target[i, j] = data[target_column][time_length + i + j]
 
     inputs_data_np = [np.array(inputs_data) for inputs_data in inputs_data]
     inputs_data_np = np.array(inputs_data_np)
     
-    inputs_target_np = np.array(inputs_target).reshape(len(inputs_data), 1)
+    inputs_target_np = np.array(inputs_target)
 
     return inputs_data_np, inputs_target_np
 
 #%%
-# make all_data in 2016/04 ~ 2018/03 and Normalized
+# make Training data
 
-all_data_2016 = all_data.loc[pd.IndexSlice[:, 2016, :],:]
-all_data_2017 = all_data.loc[pd.IndexSlice[:, 2017, :],:]
-all_data_201801to201803 = all_data.loc[pd.IndexSlice[:, 2018, 1:3],:]
-all_data_201604to201803 = pd.concat([all_data_2016, all_data_2017, all_data_201801to201803])
-all_data_201604to201803.reset_index(inplace=True)
-all_data_201604to201803.set_index('datetime', inplace=True) 
+all_data_201604to201803 = all_data.loc['2016-04-01 00:00:00':'2018-03-31 23:00:00', :]
 all_data_201604to201803.drop('year', axis=1, inplace=True)
 
 all_data_201604to201803.to_csv('all_data_201604to201803.csv')
@@ -65,17 +59,6 @@ all_data_201604to201803.to_csv('all_data_201604to201803.csv')
 all_data_201604to201803_normalized, all_data_201604to201803_mean, all_data_201604to201803_std = zscore(all_data_201604to201803, all_data_201604to201803)
 
 LSTM_inputs_data_201604to201803, LSTM_inputs_target_201604to201803 = make_dataset(all_data_201604to201803_normalized)
-
-#%%
-# make all_data_201804 and Normalized
-
-all_data_201804 = all_data.loc[pd.IndexSlice[:, 2018, 4],:]
-all_data_201804.reset_index(inplace=True)
-all_data_201804.set_index('datetime', inplace=True) 
-all_data_201804.drop('year', axis=1, inplace=True)
-all_data_201804_normalized, all_data_201804_mean, all_data_201804_std = zscore(all_data_201604to201803, all_data_201804)
-
-LSTM_inputs_data_201804, LSTM_inputs_target_201804 = make_dataset(all_data_201804_normalized)
 
 #%%
 from keras.models import Sequential
@@ -126,7 +109,7 @@ pbounds = {'hidden_size_1': (32, 1024),
 
 optimizer = BayesianOptimization(f=model_by_BayesianOptimization, pbounds=pbounds)
 
-optimizer.maximize(init_points=10, n_iter=200, acq='ei')
+optimizer.maximize(init_points=10, n_iter=10, acq='ei')
 
 #%%
 all_BO = optimizer.res['all']
