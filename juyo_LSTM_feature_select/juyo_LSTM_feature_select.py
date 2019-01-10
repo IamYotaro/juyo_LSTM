@@ -10,6 +10,7 @@ import pickle
 PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_feature_select'
 os.chdir(PATH)
 all_data_201604to201803 = pd.read_csv('all_data_201604to201803.csv')
+
 #%%
 all_data_201604to201803 = pd.read_csv('all_data_201604to201803.csv')
 all_data_201604to201803.set_index('datetime', inplace=True)

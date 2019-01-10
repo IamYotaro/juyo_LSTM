@@ -2,13 +2,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
+import os
 
 #%%
-juyo_info = pd.read_pickle('juyo_info.pkl')
-tem_info = pd.read_pickle('tem_info.pkl')
-re_im_info = pd.read_pickle('re_im_info.pkl')
-re_spot_info = pd.read_pickle('re_spot_info.pkl')
-
+PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_201604to201803(optimized)_24h_prediction'
+os.chdir(PATH)
+all_data = pd.read_csv('all_data.csv')
+all_data.set_index('datetime', inplace=True)
+all_data.drop(['Kosuiryo(mm)',
+               'Nisha(MJ/m2)',
+               ])
 #%%
 # drop EreaPrice
 re_spot_info.drop(['EreaPriceHokkaido(JPY/kWh)',
