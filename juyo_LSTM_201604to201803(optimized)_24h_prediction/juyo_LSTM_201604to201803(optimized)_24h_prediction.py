@@ -10,9 +10,8 @@ DATA_PATH = 'E:\AnacondaProjects\juyo_LSTM\juyo_LSTM_data'
 os.chdir(PATH)
 all_data = pd.read_csv(os.path.join(DATA_PATH, 'all_data.csv'))
 all_data.set_index('datetime', inplace=True)
-all_data.drop(['Kosuiryo(mm)',
-               'Nisha(MJ/m2)',
-               'Sitsudo(%)'], axis=1, inplace=False)
+drop_list = ['Nisha(MJ/m2)', 'Sitsudo(%)']
+all_data.drop(drop_list, axis=1, inplace=True)
 
 #%%
 # z-score normalization function

@@ -8,13 +8,17 @@ import pickle
 
 #%%
 PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_feature_select'
+DATA_PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_data'
 os.chdir(PATH)
-all_data_201604to201803 = pd.read_csv('all_data_201604to201803.csv')
 
-#%%
-all_data_201604to201803 = pd.read_csv('all_data_201604to201803.csv')
-all_data_201604to201803.set_index('datetime', inplace=True)
-all_data_201604to201803.drop('day', axis=1, inplace=True)
+all_data = pd.read_csv(os.path.join(DATA_PATH, 'all_data.csv'))
+all_data.set_index('datetime', inplace=True)
+all_data_201604to201803 = all_data.loc['2016-04-01 00:00:00':'2018-03-31 23:00:00', :]
+all_data_201604to201803.drop('year', axis=1, inplace=True)
+all_data_201604to201803.drop(['Close(JPY/kWh)',
+                              'TotalTransactionVolume(im)(MWh/h)',
+                              'TransactionNumber',
+                              'EreaPriceTokyo(JPY/kWh)'], axis=1, inplace=True)
 
 #%%
 fixed_list = ['month','weekday','hour','Consumption','Temperature']
@@ -104,8 +108,8 @@ def LSTM_model(LSTM_inputs_data, LSTM_inputs_target):
     return LSTM_history.history['val_loss'][-1]
 
 #%%
-
 all_data_201604to201803_fixed_feature, column_comb = DataCombination(all_data_201604to201803)    
+
 '''
 # fixed data only
 all_data_201604to201803_comb = all_data_201604to201803_fixed_feature
@@ -119,7 +123,7 @@ with open('column_comb_MSE_fixed_only.pickle', mode='wb') as f:
 
 # fixed data and data combination
 column_comb_MSE = np.zeros(len(column_comb))
-for i in tqdm(range(4090, len(column_comb))):
+for i in tqdm(range(0, len(column_comb))):
     all_data_201604to201803_comb = pd.concat([all_data_201604to201803_fixed_feature,
                                               all_data_201604to201803.loc[:,column_comb[i]]], axis=1)
     all_data_201604to201803_comb_normalized, all_data_201604to201803_comb_mean, all_data_201604to201803_comb_std = zscore(all_data_201604to201803_comb, all_data_201604to201803_comb)
@@ -127,28 +131,35 @@ for i in tqdm(range(4090, len(column_comb))):
     
     column_comb_MSE[i] = LSTM_model(LSTM_inputs_data_201604to201803, LSTM_inputs_target_201604to201803)
     
+#    with open('column_comb_MSE.pickle', mode='wb') as f:
+#        pickle.dump(column_comb_MSE, f)
+        
     if i+1 >= 10 and (i+1) % 10 == 0:
         with open('column_comb_MSE.pickle', mode='wb') as f:
             pickle.dump(column_comb_MSE, f)
+    
 '''
-#%%
 
+#%%
+'''
 def delete_zero(data):
     deleted_data = np.delete(data, np.where(data == 0))
     return deleted_data
 
-column_comb_MSE_fixed_only = delete_zero(pd.read_pickle('column_comb_MSE_fixed_only.pickle')) 
-column_comb_MSE_0_749 = delete_zero(pd.read_pickle('column_comb_MSE_0_749.pickle'))
-column_comb_MSE_750_879 = delete_zero(pd.read_pickle('column_comb_MSE_750_879.pickle'))
-column_comb_MSE_880_1249 = delete_zero(pd.read_pickle('column_comb_MSE_880_1249.pickle'))
-column_comb_MSE_1250_1839 = delete_zero(pd.read_pickle('column_comb_MSE_1250_1839.pickle'))
-column_comb_MSE_1840_2659 = delete_zero(pd.read_pickle('column_comb_MSE_1840_2659.pickle'))
-column_comb_MSE_2660_3379 = delete_zero(pd.read_pickle('column_comb_MSE_2660_3379.pickle'))
-column_comb_MSE_3380_4089 = delete_zero(pd.read_pickle('column_comb_MSE_3380_4089.pickle'))
-column_comb_MSE_4090_4094 = delete_zero(pd.read_pickle('column_comb_MSE_4090_4094.pickle'))
 
-column_comb_MSE = np.hstack((column_comb_MSE_fixed_only,
-                             column_comb_MSE_0_749,
+DATA_JEPX_PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_feature_select/colunm_comb_MSE_JEPX'
+
+column_comb_MSE_fixed_only = delete_zero(pd.read_pickle(os.path.join(DATA_JEPX_PATH, 'column_comb_MSE_fixed_only.pickle')))
+column_comb_MSE_0_749 = delete_zero(pd.read_pickle(os.path.join(DATA_JEPX_PATH, 'column_comb_MSE_0_749.pickle')))
+column_comb_MSE_750_879 = delete_zero(pd.read_pickle(os.path.join(DATA_JEPX_PATH, 'column_comb_MSE_750_879.pickle')))
+column_comb_MSE_880_1249 = delete_zero(pd.read_pickle(os.path.join(DATA_JEPX_PATH, 'column_comb_MSE_880_1249.pickle')))
+column_comb_MSE_1250_1839 = delete_zero(pd.read_pickle(os.path.join(DATA_JEPX_PATH, 'column_comb_MSE_1250_1839.pickle')))
+column_comb_MSE_1840_2659 = delete_zero(pd.read_pickle(os.path.join(DATA_JEPX_PATH, 'column_comb_MSE_1840_2659.pickle')))
+column_comb_MSE_2660_3379 = delete_zero(pd.read_pickle(os.path.join(DATA_JEPX_PATH, 'column_comb_MSE_2660_3379.pickle')))
+column_comb_MSE_3380_4089 = delete_zero(pd.read_pickle(os.path.join(DATA_JEPX_PATH, 'column_comb_MSE_3380_4089.pickle')))
+column_comb_MSE_4090_4094 = delete_zero(pd.read_pickle(os.path.join(DATA_JEPX_PATH, 'column_comb_MSE_4090_4094.pickle')))
+
+column_comb_MSE = np.hstack((column_comb_MSE_0_749,
                              column_comb_MSE_750_879,
                              column_comb_MSE_880_1249,
                              column_comb_MSE_1250_1839,
@@ -156,6 +167,12 @@ column_comb_MSE = np.hstack((column_comb_MSE_fixed_only,
                              column_comb_MSE_2660_3379,
                              column_comb_MSE_3380_4089,
                              column_comb_MSE_4090_4094))
+'''
+
+DATA_weather_PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_feature_select/colunm_comb_MSE_weather'
+
+column_comb_MSE_fixed_only = pd.read_pickle(os.path.join(DATA_weather_PATH, 'column_comb_MSE_fixed_only.pickle'))
+column_comb_MSE = pd.read_pickle(os.path.join(DATA_weather_PATH, 'column_comb_MSE.pickle'))
 
 #%%
 
@@ -172,11 +189,11 @@ plt.savefig("FeatureCombination.png",dpi=300)
 plt.show
 
 column_comb_MSE_min = column_comb_MSE[np.argmin(column_comb_MSE)]
-column_comb_MSE_feature = column_comb[np.argmin(column_comb_MSE)-1]
+column_comb_MSE_feature = column_comb[np.argmin(column_comb_MSE)]
 
 #%%
 
-column_comb_MSE_list = pd.DataFrame(np.vstack((np.array(column_comb), column_comb_MSE[1:]))).T
+column_comb_MSE_list = pd.DataFrame(np.vstack((np.array(column_comb), column_comb_MSE))).T
 column_comb_MSE_list.set_index(0, inplace=True)
 column_comb_MSE_list.rename(columns={1: 'MSE'}, inplace=True)
 column_comb_MSE_list.sort_values(by='MSE', inplace=True)
