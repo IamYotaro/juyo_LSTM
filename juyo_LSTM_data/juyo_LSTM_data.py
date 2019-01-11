@@ -188,4 +188,5 @@ all_data.set_index([all_data.index,
 all_data.index.names = ['datetime','year', 'month', 'weekday', 'hour']
 all_data.reset_index(inplace=True)
 all_data.set_index('datetime', inplace=True)
+all_data.fillna(0, inplace=True)
 all_data.to_csv('all_data.csv')

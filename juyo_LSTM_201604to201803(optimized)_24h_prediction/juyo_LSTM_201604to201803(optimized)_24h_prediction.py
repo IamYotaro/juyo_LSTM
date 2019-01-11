@@ -12,7 +12,7 @@ all_data = pd.read_csv(os.path.join(DATA_PATH, 'all_data.csv'))
 all_data.set_index('datetime', inplace=True)
 all_data.drop(['Kosuiryo(mm)',
                'Nisha(MJ/m2)',
-               'Sitsudo(%)'], axis=1, inplace=True)
+               'Sitsudo(%)'], axis=1, inplace=False)
 
 #%%
 # z-score normalization function
