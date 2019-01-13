@@ -181,11 +181,10 @@ re_spot_info.to_csv('re_spot_info.csv')
 
 all_data = pd.concat([juyo_info, tem_info, kos_info, nis_info, sit_info, re_im_info, re_spot_info], axis=1, join_axes=[juyo_info.index])
 all_data.set_index([all_data.index,
-                    all_data.index.year, 
                     all_data.index.month, 
                     all_data.index.weekday, 
                     all_data.index.hour], inplace=True)
-all_data.index.names = ['datetime','year', 'month', 'weekday', 'hour']
+all_data.index.names = ['datetime', 'month', 'weekday', 'hour']
 all_data.reset_index(inplace=True)
 all_data.set_index('datetime', inplace=True)
 all_data.fillna(0, inplace=True)

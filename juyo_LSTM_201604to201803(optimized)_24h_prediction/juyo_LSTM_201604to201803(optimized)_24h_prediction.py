@@ -6,11 +6,12 @@ import os
 
 #%%
 PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_201604to201803(optimized)_24h_prediction'
-DATA_PATH = 'E:\AnacondaProjects\juyo_LSTM\juyo_LSTM_data'
+DATA_PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_data'
 os.chdir(PATH)
 all_data = pd.read_csv(os.path.join(DATA_PATH, 'all_data.csv'))
 all_data.set_index('datetime', inplace=True)
-drop_list = ['Nisha(MJ/m2)', 'Sitsudo(%)']
+all_data.index = pd.to_datetime(all_data.index)
+drop_list = ['Kosuiryo(mm)']
 all_data.drop(drop_list, axis=1, inplace=True)
 
 #%%
@@ -32,7 +33,7 @@ def original_scale(predicted_data, training_data_mean, training_data_std):
 # Make LSTM inputs data function
     
 time_length = 24
-n_pred = 1
+n_pred = 5
 target_column = 'Consumption'
 
 def make_dataset(data):
@@ -59,7 +60,6 @@ def make_dataset(data):
 # make Training data
 
 all_data_201604to201803 = all_data.loc['2016-04-01 00:00:00':'2018-03-31 23:00:00', :]
-all_data_201604to201803.drop('year', axis=1, inplace=True)
 
 all_data_201604to201803.to_csv('all_data_201604to201803.csv')
 
@@ -71,7 +71,6 @@ LSTM_inputs_data_201604to201803, LSTM_inputs_target_201604to201803 = make_datase
 # make all_data_201804 and Normalized
 
 all_data_201804 = all_data.loc['2018-04-01 00:00:00':'2018-04-30 23:00:00']
-all_data_201804.drop('year', axis=1, inplace=True)
 
 all_data_201804_normalized, all_data_201804_mean, all_data_201804_std = zscore(all_data_201604to201803, all_data_201804)
 
@@ -91,7 +90,7 @@ np.random.seed(123)
 #%%
 in_dim = LSTM_inputs_data_201604to201803.shape[2]
 hidden_size = 858
-out_dim = 1
+out_dim = n_pred
 
 model = Sequential()
 model.add(CuDNNLSTM(hidden_size, return_sequences=False,
@@ -142,7 +141,7 @@ ax.set_ylabel('Mean Squared Error (MSE)',fontsize=12)
 ax.set_xlabel('Epochs',fontsize=12)
 plt.legend()
 plt.tight_layout()
-plt.savefig("model_loss_201604to201803.png",dpi=300)
+plt.savefig('model_loss_201604to201803.png', dpi=300)
 plt.show()
 
 #%%
@@ -174,32 +173,36 @@ predicted_201604to201803_pd.index = all_data_201604to201803_normalized[time_leng
 MSE_201604to201803 = MSE(all_data_201604to201803_normalized, predicted_201604to201803_pd)
 
 #%%
-moving_average_length = np.ones(168)/168.0
-all_data_201604to201803_normalized_moving_average = np.convolve(all_data_201604to201803_normalized['Consumption'], moving_average_length, mode='same')
-all_data_201604to201803_normalized_moving_average = pd.DataFrame(data=all_data_201604to201803_normalized_moving_average, index=all_data_201604to201803.index)
-predicted_201604to201803_pd_moving_average = np.convolve(predicted_201604to201803_pd[0], moving_average_length, mode='same')
-predicted_201604to201803_pd_moving_average = pd.DataFrame(data=predicted_201604to201803_pd_moving_average, index=predicted_201604to201803_pd.index)
+for i in range(n_pred):
+    moving_average_length = np.ones(168)/168.0
+    all_data_201604to201803_normalized_moving_average = np.convolve(all_data_201604to201803_normalized['Consumption'], moving_average_length, mode='same')
+    all_data_201604to201803_normalized_moving_average = pd.DataFrame(data=all_data_201604to201803_normalized_moving_average, index=all_data_201604to201803.index)
+    predicted_201604to201803_pd_moving_average = np.convolve(predicted_201604to201803_pd[i], moving_average_length, mode='same')
+    predicted_201604to201803_pd_moving_average = pd.DataFrame(data=predicted_201604to201803_pd_moving_average, index=predicted_201604to201803_pd.index)
 
-#%%
-fig, ax = plt.subplots(1,1)
-ax.plot(all_data_201604to201803_normalized['Consumption'], label='Actual', linewidth=0.8)
-ax.plot(predicted_201604to201803_pd[0], label='Predicted', linewidth=0.8)
-ax.plot(all_data_201604to201803_normalized_moving_average, label='Actual(Moving Average)')
-ax.plot(predicted_201604to201803_pd_moving_average, label='Predicted(Moving Average)')
-ax.xaxis.set_major_locator(mdates.MonthLocator([(i*2) for i in range(1,12)]))
-ax.xaxis.set_minor_locator(mdates.MonthLocator())
-ax.xaxis.set_major_formatter(mdates.DateFormatter('%y/%m'))
-ax.set_ylabel('Electric Power Consumption (Normalized)',fontsize=12)
-ax.set_title('Predict daily Electric Power Consumption \n in 2016/04 ~ 2018/03',fontsize=13)
-ax.annotate('RMSE: %.3f'%np.sqrt(MSE_201604to201803[0]), 
-             xy=(0.78, 0.02),  xycoords='axes fraction',
-            xytext=(0.78, 0.02), textcoords='axes fraction')
-ax.grid(which='major',color='gray',linestyle='--')
-ax.grid(which='minor',color='gray',linestyle='--')
-fig.autofmt_xdate(rotation=45, ha='center')
-plt.legend()
-plt.savefig("juyo_201604to201803_predicted.png",dpi=300)
-plt.show
+    fig, ax = plt.subplots(1,1)
+    ax.plot(all_data_201604to201803_normalized['Consumption'], label='Actual', linewidth=0.8)
+    ax.plot(predicted_201604to201803_pd[i], label='Predicted', linewidth=0.8)
+    ax.plot(all_data_201604to201803_normalized_moving_average, label='Actual(Moving Average)')
+    ax.plot(predicted_201604to201803_pd_moving_average, label='Predicted(Moving Average)')
+    ax.xaxis.set_major_locator(mdates.MonthLocator([(i*2) for i in range(1,12)]))
+    ax.xaxis.set_minor_locator(mdates.MonthLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%y/%m'))
+    ax.set_ylabel('Electric Power Consumption (Normalized)',fontsize=12)
+    ax.set_title('Predict Electric Power Consumption \n in 2016/04 ~ 2018/03 after {} hour'.format(i+1), fontsize=13)
+    ax.annotate('RMSE: %.3f'%np.sqrt(MSE_201604to201803[i]),
+                xy=(0.8, 0.02),  xycoords='axes fraction',
+                xytext=(0.8, 0.02), textcoords='axes fraction')
+    ax.grid(which='major',color='gray',linestyle='--')
+    ax.grid(which='minor',color='gray',linestyle='--')
+    fig.autofmt_xdate(rotation=45, ha='center')
+    plt.legend()
+    plt.savefig(os.path.join('fig', 'juyo_201604to201803_predicted_after{}hour.png'.format(i+1)),dpi=300)
+
+    if i == 0:
+        plt.show(fig)
+    else:
+        plt.close(fig)
 
 #%%
 # normalized -> original scale
@@ -216,35 +219,39 @@ MSE_201604to201803_original_scale = MSE(all_data_201604to201803, predicted_20160
 MAPE_201604to201803_original_scale = MAPE(all_data_201604to201803, predicted_201604to201803_original_scale_pd)
 
 #%%
-moving_average_length = np.ones(168)/168.0
-all_data_201604to201803_moving_average = np.convolve(all_data_201604to201803['Consumption'], moving_average_length, mode='same')
-all_data_201604to201803_moving_average = pd.DataFrame(data=all_data_201604to201803_moving_average, index=all_data_201604to201803.index)
-predicted_201604to201803_original_scale_pd_moving_average = np.convolve(predicted_201604to201803_original_scale_pd[0], moving_average_length, mode='same')
-predicted_201604to201803_original_scale_pd_moving_average = pd.DataFrame(data=predicted_201604to201803_original_scale_pd_moving_average, index=predicted_201604to201803_original_scale_pd.index)
+for i in range(n_pred):
+    moving_average_length = np.ones(168)/168.0
+    all_data_201604to201803_moving_average = np.convolve(all_data_201604to201803['Consumption'], moving_average_length, mode='same')
+    all_data_201604to201803_moving_average = pd.DataFrame(data=all_data_201604to201803_moving_average, index=all_data_201604to201803.index)
+    predicted_201604to201803_original_scale_pd_moving_average = np.convolve(predicted_201604to201803_original_scale_pd[i], moving_average_length, mode='same')
+    predicted_201604to201803_original_scale_pd_moving_average = pd.DataFrame(data=predicted_201604to201803_original_scale_pd_moving_average, index=predicted_201604to201803_original_scale_pd.index)
 
-#%%
-fig, ax = plt.subplots(1,1)
-ax.plot(all_data_201604to201803['Consumption'], label='Actual', linewidth=0.8)
-ax.plot(predicted_201604to201803_original_scale_pd[0], label='Predicted', linewidth=0.8)
-ax.plot(all_data_201604to201803_moving_average, label='Actual(Moving Average)')
-ax.plot(predicted_201604to201803_original_scale_pd_moving_average, label='Predicted(Moving Average)')
-ax.xaxis.set_major_locator(mdates.MonthLocator([(i*2) for i in range(1,12)]))
-ax.xaxis.set_major_formatter(mdates.DateFormatter('%y/%m'))
-ax.xaxis.set_minor_locator(mdates.MonthLocator())
-ax.set_ylabel('Electric Power Consumption [10000kW]',fontsize=12)
-ax.set_title('Predict daily Electric Power Consumption \n in 2016/04 ~ 2018/03',fontsize=13)
-ax.annotate('RMSE: %.3f'%np.sqrt(MSE_201604to201803_original_scale[0]), 
-             xy=(0.78, 0.02),  xycoords='axes fraction',
-            xytext=(0.78, 0.02), textcoords='axes fraction')
-ax.annotate('MAPE: %.3f%%'%MAPE_201604to201803_original_scale[0], 
-             xy=(0.78, 0.07),  xycoords='axes fraction',
-            xytext=(0.78, 0.07), textcoords='axes fraction')
-ax.grid(which='major',color='gray',linestyle='--')
-ax.grid(which='minor',color='gray',linestyle='--')
-fig.autofmt_xdate(rotation=45, ha='center')
-plt.legend()
-plt.savefig("juyo_201604to201803_predicted_original_scale.png",dpi=300)
-plt.show
+    fig, ax = plt.subplots(1,1)
+    ax.plot(all_data_201604to201803['Consumption'], label='Actual', linewidth=0.8)
+    ax.plot(predicted_201604to201803_original_scale_pd[i], label='Predicted', linewidth=0.8)
+    ax.plot(all_data_201604to201803_moving_average, label='Actual(Moving Average)')
+    ax.plot(predicted_201604to201803_original_scale_pd_moving_average, label='Predicted(Moving Average)')
+    ax.xaxis.set_major_locator(mdates.MonthLocator([(i*2) for i in range(1,12)]))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%y/%m'))
+    ax.xaxis.set_minor_locator(mdates.MonthLocator())
+    ax.set_ylabel('Electric Power Consumption [10000kW]',fontsize=12)
+    ax.set_title('Predict Electric Power Consumption \n in 2016/04 ~ 2018/03 after {} hour'.format(i+1), fontsize=13)
+    ax.annotate('RMSE: %.3f'%np.sqrt(MSE_201604to201803_original_scale[i]), 
+                xy=(0.75, 0.02),  xycoords='axes fraction',
+                xytext=(0.75, 0.02), textcoords='axes fraction')
+    ax.annotate('MAPE: %.3f%%'%MAPE_201604to201803_original_scale[i], 
+                xy=(0.75, 0.07),  xycoords='axes fraction',
+                xytext=(0.75, 0.07), textcoords='axes fraction')
+    ax.grid(which='major',color='gray',linestyle='--')
+    ax.grid(which='minor',color='gray',linestyle='--')
+    fig.autofmt_xdate(rotation=45, ha='center')
+    plt.legend()
+    plt.savefig(os.path.join('fig', 'juyo_201604to201803_predicted_original_scale_after{}hour.png'.format(i+1)), dpi=300)
+
+    if i == 0:
+        plt.show(fig)
+    else:
+        plt.close(fig)
 
 #%%
 # Predicte 2018/02 uses weights is training set 2016/04 ~ 2018/03
@@ -257,31 +264,36 @@ predicted_201804_pd.index = all_data_201804_normalized[time_length:len(all_data_
 MSE_201804 = MSE(all_data_201804_normalized, predicted_201804_pd)
 
 #%%
-moving_average_length = np.ones(24)/24.0
-all_data_201804_normalized_moving_average = np.convolve(all_data_201804_normalized['Consumption'], moving_average_length, mode='same')
-all_data_201804_normalized_moving_average = pd.DataFrame(data=all_data_201804_normalized_moving_average, index=all_data_201804.index)
-predicted_201804_pd_moving_average = np.convolve(predicted_201804_pd[0], moving_average_length, mode='same')
-predicted_201804_pd_moving_average = pd.DataFrame(data=predicted_201804_pd_moving_average, index=predicted_201804_pd.index)
+for i in range(n_pred):
+    moving_average_length = np.ones(24)/24.0
+    all_data_201804_normalized_moving_average = np.convolve(all_data_201804_normalized['Consumption'], moving_average_length, mode='same')
+    all_data_201804_normalized_moving_average = pd.DataFrame(data=all_data_201804_normalized_moving_average, index=all_data_201804.index)
+    predicted_201804_pd_moving_average = np.convolve(predicted_201804_pd[i], moving_average_length, mode='same')
+    predicted_201804_pd_moving_average = pd.DataFrame(data=predicted_201804_pd_moving_average, index=predicted_201804_pd.index)
 
-fig, ax = plt.subplots(1,1)
-ax.plot(all_data_201804_normalized['Consumption'], label='Actual', linewidth=0.8)
-ax.plot(predicted_201804_pd[0], label='Predicted', linewidth=0.8)
-ax.plot(all_data_201804_normalized_moving_average, label='Actual(Moving Average)')
-ax.plot(predicted_201804_pd_moving_average, label='Predicted(Moving Average)')
-ax.xaxis.set_major_locator(mdates.DayLocator([(i*3+1) for i in range(10)]))
-ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-ax.xaxis.set_minor_locator(mdates.DayLocator())
-ax.set_ylabel('Electric Power Consumption (Normalized)',fontsize=12)
-ax.set_title('Predict daily Electric Power Consumption in 2018/04',fontsize=13)
-ax.annotate('RMSE: %.3f'%np.sqrt(MSE_201804[0]), 
-             xy=(0.76, 0.02),  xycoords='axes fraction',
-            xytext=(0.76, 0.02), textcoords='axes fraction')
-ax.grid(which='major',color='gray',linestyle='--')
-ax.grid(which='minor',color='gray',linestyle='--')
-fig.autofmt_xdate(rotation=45, ha='center')
-plt.legend()
-plt.savefig("juyo_201804_predicted.png",dpi=300)
-plt.show
+    fig, ax = plt.subplots(1,1)
+    ax.plot(all_data_201804_normalized['Consumption'], label='Actual', linewidth=0.8)
+    ax.plot(predicted_201804_pd[i], label='Predicted', linewidth=0.8)
+    ax.plot(all_data_201804_normalized_moving_average, label='Actual(Moving Average)')
+    ax.plot(predicted_201804_pd_moving_average, label='Predicted(Moving Average)')
+    ax.xaxis.set_major_locator(mdates.DayLocator([(i*3+1) for i in range(10)]))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d %a'))
+    ax.xaxis.set_minor_locator(mdates.DayLocator())
+    ax.set_ylabel('Electric Power Consumption (Normalized)',fontsize=12)
+    ax.set_title('Predict Electric Power Consumption in 2018/04 \n after {} hour'.format(i+1), fontsize=13)
+    ax.annotate('RMSE: %.3f'%np.sqrt(MSE_201804[i]), 
+                xy=(0.76, 0.02),  xycoords='axes fraction',
+                xytext=(0.76, 0.02), textcoords='axes fraction')
+    ax.grid(which='major',color='gray',linestyle='--')
+    ax.grid(which='minor',color='gray',linestyle='--')
+    fig.autofmt_xdate(rotation=45, ha='center')
+    plt.legend()
+    plt.savefig(os.path.join('fig', 'juyo_201804_predicted_after{}hour.png'.format(i+1)), dpi=300)
+
+    if i == 0:
+        plt.show(fig)
+    else:
+        plt.close(fig)
 
 #%%
 # normalized -> original scale
@@ -296,31 +308,36 @@ MSE_201804_original_scale = MSE(all_data_201804, predicted_201804_original_scale
 MAPE_201804_original_scale = MAPE(all_data_201804, predicted_201804_original_scale_pd)
 
 #%%
-moving_average_length = np.ones(24)/24.0
-all_data_201804_moving_average = np.convolve(all_data_201804['Consumption'], moving_average_length, mode='same')
-all_data_201804_moving_average = pd.DataFrame(data=all_data_201804_moving_average, index=all_data_201804.index)
-predicted_201804_original_scale_pd_moving_average = np.convolve(predicted_201804_original_scale_pd[0], moving_average_length, mode='same')
-predicted_201804_original_scale_pd_moving_average = pd.DataFrame(data=predicted_201804_original_scale_pd_moving_average, index=predicted_201804_original_scale_pd.index)
+for i in range(n_pred):
+    moving_average_length = np.ones(24)/24.0
+    all_data_201804_moving_average = np.convolve(all_data_201804['Consumption'], moving_average_length, mode='same')
+    all_data_201804_moving_average = pd.DataFrame(data=all_data_201804_moving_average, index=all_data_201804.index)
+    predicted_201804_original_scale_pd_moving_average = np.convolve(predicted_201804_original_scale_pd[i], moving_average_length, mode='same')
+    predicted_201804_original_scale_pd_moving_average = pd.DataFrame(data=predicted_201804_original_scale_pd_moving_average, index=predicted_201804_original_scale_pd.index)
 
-fig, ax = plt.subplots(1,1)
-ax.plot(all_data_201804['Consumption'], label='Actual', linewidth=0.8)
-ax.plot(predicted_201804_original_scale_pd[0], label='Predicted', linewidth=0.8)
-ax.plot(all_data_201804_moving_average, label='Actual(Moving Average)')
-ax.plot(predicted_201804_original_scale_pd_moving_average, label='Predicted(Moving Average)')
-ax.xaxis.set_major_locator(mdates.DayLocator([(i*3+1) for i in range(10)]))
-ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-ax.xaxis.set_minor_locator(mdates.DayLocator())
-ax.set_ylabel('Electric Power Consumption [10000kW]',fontsize=12)
-ax.set_title('Predict daily Electric Power Consumption in 2018/04',fontsize=13)
-ax.annotate('RMSE: %.3f'%np.sqrt(MSE_201804_original_scale[0]), 
-             xy=(0.76, 0.02),  xycoords='axes fraction',
-            xytext=(0.76, 0.02), textcoords='axes fraction')
-ax.annotate('MAPE: %.3f%%'%MAPE_201804_original_scale[0], 
-             xy=(0.76, 0.07),  xycoords='axes fraction',
-            xytext=(0.76, 0.07), textcoords='axes fraction')
-ax.grid(which='major',color='gray',linestyle='--')
-ax.grid(which='minor',color='gray',linestyle='--')
-fig.autofmt_xdate(rotation=45, ha='center')
-plt.legend()
-plt.savefig("juyo_201804_predicted_original_scale.png",dpi=300)
-plt.show
+    fig, ax = plt.subplots(1,1)
+    ax.plot(all_data_201804['Consumption'], label='Actual', linewidth=0.8)
+    ax.plot(predicted_201804_original_scale_pd[i], label='Predicted', linewidth=0.8)
+    ax.plot(all_data_201804_moving_average, label='Actual(Moving Average)')
+    ax.plot(predicted_201804_original_scale_pd_moving_average, label='Predicted(Moving Average)')
+    ax.xaxis.set_major_locator(mdates.DayLocator([(i*3+1) for i in range(10)]))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d %a'))
+    ax.xaxis.set_minor_locator(mdates.DayLocator())
+    ax.set_ylabel('Electric Power Consumption [10000kW]',fontsize=12)
+    ax.set_title('Predict Electric Power Consumption in 2018/04 \n after {} hour'.format(i+1), fontsize=13)
+    ax.annotate('RMSE: %.3f'%np.sqrt(MSE_201804_original_scale[i]), 
+                xy=(0.76, 0.02),  xycoords='axes fraction',
+                xytext=(0.76, 0.02), textcoords='axes fraction')
+    ax.annotate('MAPE: %.3f%%'%MAPE_201804_original_scale[i], 
+                xy=(0.76, 0.07),  xycoords='axes fraction',
+                xytext=(0.76, 0.07), textcoords='axes fraction')
+    ax.grid(which='major',color='gray',linestyle='--')
+    ax.grid(which='minor',color='gray',linestyle='--')
+    fig.autofmt_xdate(rotation=45, ha='center')
+    plt.legend()
+    plt.savefig(os.path.join('fig', 'juyo_201804_predicted_original_scale_after{}hour.png'.format(i+1)), dpi=300)
+    
+    if i == 0:
+        plt.show(fig)
+    else:
+        plt.close(fig)
