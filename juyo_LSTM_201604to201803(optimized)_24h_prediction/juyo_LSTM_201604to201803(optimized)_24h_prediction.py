@@ -32,8 +32,8 @@ def original_scale(predicted_data, training_data_mean, training_data_std):
 # Set time length
 # Make LSTM inputs data function
     
-time_length = 24
-n_pred = 5
+time_length = 24*7
+n_pred = 24
 target_column = 'Consumption'
 
 def make_dataset(data):
