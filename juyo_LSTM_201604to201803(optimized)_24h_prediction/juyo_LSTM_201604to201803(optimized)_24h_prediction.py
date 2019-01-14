@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
+import pickle
 import os
 
 #%%
@@ -33,7 +34,7 @@ def original_scale(predicted_data, training_data_mean, training_data_std):
 # Make LSTM inputs data function
     
 time_length = 24*7
-n_pred = 24
+n_pred = 1
 target_column = 'Consumption'
 
 def make_dataset(data):
@@ -108,17 +109,22 @@ y_n = input("Use saved weight? [y/n] : ")
 while True:
     if y_n == 'y':
         model.load_weights('best_model_checkpint.h5')
+        with open('LSTM_201604to201803_history.pickle', mode='rb') as f:
+            LSTM_201604to201803_history = pickle.load(f)
         break
     elif y_n == 'n':
         early_stopping = EarlyStopping(monitor='val_loss', mode='auto', patience=10)
         model_checkpoint = ModelCheckpoint(filepath='best_model_checkpint.h5', monitor='val_loss', save_best_only=True)
         LSTM_201604to201803_history = model.fit(LSTM_inputs_data_201604to201803, LSTM_inputs_target_201604to201803,
-                                batch_size=175,
-                                epochs=100,
-                                validation_split=0.1,
-                                shuffle=False,
-                                callbacks=[model_checkpoint])
+                                                batch_size=175,
+                                                epochs=100,
+                                                validation_split=0.1,
+                                                shuffle=False,
+                                                callbacks=[model_checkpoint])
         model.save_weights('LSTM_201604to201803_weights.h5')
+        
+        with open('LSTM_201604to201803_history.pickle', mode='wb') as f:
+            pickle.dump(LSTM_201604to201803_history, f)
         break
     else:
         y_n = input("Wrong input caracter. Use saved weight? [y/n] : ")
@@ -166,6 +172,7 @@ def MAPE(data, pred_data):
 # RMSE Toshiba 83.49[10000kW] https://www.toshiba.co.jp/about/press/2017_11/pr_j0801.htm
 # plot training set and predict set
 
+model.load_weights('best_model_checkpint.h5')
 predicted_201604to201803 = model.predict(LSTM_inputs_data_201604to201803)
 predicted_201604to201803_pd = pd.DataFrame(predicted_201604to201803)
 predicted_201604to201803_pd.index = all_data_201604to201803_normalized[time_length:len(all_data_201604to201803)-n_pred+1].index
