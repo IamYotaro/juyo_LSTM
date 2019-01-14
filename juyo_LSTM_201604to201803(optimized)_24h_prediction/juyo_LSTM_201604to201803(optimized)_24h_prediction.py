@@ -33,7 +33,7 @@ def original_scale(predicted_data, training_data_mean, training_data_std):
 # Set time length
 # Make LSTM inputs data function
     
-time_length = 24*7
+time_length = 24
 n_pred = 1
 target_column = 'Consumption'
 
@@ -117,7 +117,7 @@ while True:
         model_checkpoint = ModelCheckpoint(filepath='best_model_checkpint.h5', monitor='val_loss', save_best_only=True)
         LSTM_201604to201803_history = model.fit(LSTM_inputs_data_201604to201803, LSTM_inputs_target_201604to201803,
                                                 batch_size=175,
-                                                epochs=100,
+                                                epochs=10,
                                                 validation_split=0.1,
                                                 shuffle=False,
                                                 callbacks=[model_checkpoint])
