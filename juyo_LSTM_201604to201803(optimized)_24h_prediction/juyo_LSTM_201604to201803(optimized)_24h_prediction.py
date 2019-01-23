@@ -6,8 +6,10 @@ import pickle
 import os
 
 #%%
-PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_201604to201803(optimized)_24h_prediction'
-DATA_PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_data'
+#PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_201604to201803(optimized)_24h_prediction'
+PATH = 'C:/Users/s1887/AnacondaProjects/juyo_LSTM\juyo_LSTM_201604to201803(optimized)_24h_prediction'
+#DATA_PATH = 'E:/AnacondaProjects/juyo_LSTM/juyo_LSTM_data'
+DATA_PATH = 'C:/Users/s1887/AnacondaProjects/juyo_LSTM/juyo_LSTM_data'
 os.chdir(PATH)
 all_data = pd.read_csv(os.path.join(DATA_PATH, 'all_data.csv'))
 all_data.set_index('datetime', inplace=True)
@@ -80,7 +82,8 @@ LSTM_inputs_data_201804, LSTM_inputs_target_201804 = make_dataset(all_data_20180
 #%%
 from keras.models import Sequential
 from keras.layers.core import Dense
-from keras.layers import CuDNNLSTM
+#from keras.layers import CuDNNLSTM
+from keras.layers.recurrent import LSTM
 from keras import optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import plot_model
@@ -94,7 +97,7 @@ hidden_size = 858
 out_dim = n_pred
 
 model = Sequential()
-model.add(CuDNNLSTM(hidden_size, return_sequences=False,
+model.add(LSTM(hidden_size, return_sequences=False,
                batch_input_shape=(None, time_length, in_dim)))
 model.add(Dense(out_dim, activation='linear'))
 
