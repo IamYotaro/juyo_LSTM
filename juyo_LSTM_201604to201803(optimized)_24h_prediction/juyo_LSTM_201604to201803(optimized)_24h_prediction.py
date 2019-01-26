@@ -12,7 +12,7 @@ os.chdir(PATH)
 all_data = pd.read_csv(os.path.join(DATA_PATH, 'all_data.csv'))
 all_data.set_index('datetime', inplace=True)
 all_data.index = pd.to_datetime(all_data.index)
-drop_list = ['Kosuiryo(mm)']
+drop_list = ['Kosuiryo(mm)', 'Nisha(MJ/m2)', 'Sitsudo(%)']
 all_data.drop(drop_list, axis=1, inplace=True)
 
 #%%
@@ -117,7 +117,7 @@ while True:
         model_checkpoint = ModelCheckpoint(filepath='best_model_checkpint.h5', monitor='val_loss', save_best_only=True)
         LSTM_201604to201803_history = model.fit(LSTM_inputs_data_201604to201803, LSTM_inputs_target_201604to201803,
                                                 batch_size=175,
-                                                epochs=10,
+                                                epochs=500,
                                                 validation_split=0.1,
                                                 shuffle=False,
                                                 callbacks=[model_checkpoint])
